@@ -1,5 +1,8 @@
 package com.ddecaest.internal
 
+import com.ddecaest.external.Entity
+import com.ddecaest.external.Field
+import com.ddecaest.external.FieldType
 import com.ddecaest.external.RepositoryModel
 import org.springframework.jdbc.core.RowMapper
 import java.lang.IllegalArgumentException
@@ -13,29 +16,60 @@ internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
             throw IllegalArgumentException("Sorry, I am too stupid to handle queries containing more than one entity for now!")
         }
 
-        val selectClause = query.fields.joinToString(transform = { selectedFieldAsSql(it) }, separator = ",")
-        val sql = "SELECT $selectClause FROM ${repositoryModel.entityAsTableName(entitiesUsed.iterator().next())}"
+        val sql = buildSql(query, entitiesUsed)
+        val params = buildParams()
+        val rowMapper = buildRowMapper(query)
 
-        // TODO params
-        // TODO rowMapper
-        val rowMapper = RowMapper<Any> { resultSet, rowNum ->
-            listOf<String>()
+        return JdbcQuery(sql, params, rowMapper)
+    }
+
+    private fun buildSql(query: Query, entitiesUsed: Set<String>): String {
+        val entityUsed = getEntity(entitiesUsed.iterator().next())
+        val selectClause = query.fields.joinToString(transform = { selectedFieldAsSql(it) }, separator = ",")
+        return "SELECT $selectClause FROM ${entityUsed.tableName}"
+    }
+
+    private fun buildParams(): Map<String, Any> {
+        // Add this when it becomes relevant
+        return mapOf<String, Any>()
+    }
+
+    private fun buildRowMapper(query: Query): RowMapper<Any> {
+        // TODO: what if a column name appears in 2 entities?
+        return RowMapper { resultSet, _ ->
+            val result = mutableMapOf<String, Any>()
+
+            for (field in query.fields) {
+                val fieldInModel = getField(field)
+                @Suppress("IMPLICIT_CAST_TO_ANY")
+                val variableResult = when (fieldInModel.type) {
+                    FieldType.STRING -> resultSet.getString(fieldInModel.columnName)
+                    FieldType.LONG -> resultSet.getLong(fieldInModel.columnName)
+                }
+                result[fieldInModel.name] = variableResult
+            }
+
+            result
         }
-        return JdbcQuery(sql, emptyMap(), rowMapper)
     }
 
     private fun selectedFieldAsSql(selectedField: SelectedField): String {
-        val tableName = entityAsTableName(selectedField.entityName)
-        val fieldName = repositoryModel.fieldAsTableName(selectedField.entityName, selectedField.fieldName)
-            ?: throw IllegalArgumentException("There is no field ${selectedField.fieldName} mapped to the entity ${selectedField.entityName}")
+        val fieldName = getField(selectedField).columnName
+        val tableName = getEntity(selectedField.entityName).tableName
 
-        return "$fieldName.$tableName"
+        return "$tableName.$fieldName"
     }
 
-    private fun entityAsTableName(entityName: String): String {
-        return repositoryModel.entityAsTableName(entityName)
+    private fun getField(selectedField: SelectedField): Field {
+        return (repositoryModel.getField(selectedField.entityName, selectedField.fieldName)
+            ?: throw IllegalArgumentException("There is no field ${selectedField.fieldName} mapped to the entity ${selectedField.entityName}"))
+    }
+
+    private fun getEntity(entityName: String): Entity {
+        return repositoryModel.getEntity(entityName)
             ?: throw IllegalArgumentException("There is no table mapped to the unknown entity $entityName")
     }
+
 
     class JdbcQuery(val sql: String, val params: Map<String, Any>, val rowMapper: RowMapper<Any>)
 }

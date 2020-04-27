@@ -1,49 +1,48 @@
 package com.ddecaest
 
-import com.ddecaest.external.DefaultBootstrappedQueryServiceFactory
-import com.ddecaest.external.Entity
-import com.ddecaest.external.RepositoryModel
-import org.h2.Driver
+import com.ddecaest.external.*
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.jdbc.datasource.SimpleDriverDataSource
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType
 import javax.sql.DataSource
 
-fun main() {
-    val demoRepositoryModel = RepositoryModel(
-        listOf(
-            Entity(
-                "User", "User",
-                mapOf(
-                    "UserName" to "UserName",
-                    "FirstName" to "FirstName",
-                    "LastName" to "LastName",
-                    "Age" to "Age",
-                    "BirthDate" to "BirthDate"
-                )
-            )
-        )
-    )
 
-    val dataSource: DataSource = SimpleDriverDataSource(Driver(), "jdbc:h2:mem:test", "SA", "pass")
-    instantiateDemoDb(dataSource)
+fun main() {
+    val dataSource = instantiateDemoDb()
+    val demoRepositoryModel = instantiateDemoRepositoryModel()
 
     val factory = DefaultBootstrappedQueryServiceFactory.build(demoRepositoryModel, dataSource)
-
-    val result = factory.executeQuery("SELECT User.UserName")
-
-    println("result")
+    val result = factory.executeQuery("SELECT User.Username")
+    println(result)
 }
 
-fun instantiateDemoDb(dataSource: DataSource) {
+private fun instantiateDemoDb(): DataSource {
+    val dataSource = EmbeddedDatabaseBuilder().setType(EmbeddedDatabaseType.H2).build()
     val jdbcTemplate = JdbcTemplate(dataSource)
-    val sql = """
-        CREATE TABLE User (
-            UserName INT NOT NULL,
+
+    val createTableSql = """
+        CREATE TABLE USER (
+            UserName VARCHAR(50) NOT NULL,
             FirstName VARCHAR(50) NOT NULL,
-            LastName VARCHAR(50) NOT NULL,
-            Age INT NOT NULL,
-            BirthDate TIMESTAMP NOT NULL
+            Age INT NOT NULL
             )
     """
-    jdbcTemplate.update(sql)
+    jdbcTemplate.update(createTableSql)
+
+    val populateTableSql = """
+        INSERT INTO USER(UserName, FirstName, Age) VALUES('Dragonex', 'Bob', 12)
+    """
+    jdbcTemplate.update(populateTableSql)
+
+    return dataSource
+}
+
+private fun instantiateDemoRepositoryModel(): RepositoryModel {
+    val demoFields = listOf(
+        Field("Username", "UserName", FieldType.STRING),
+        Field("Firstname", "FirstName", FieldType.STRING),
+        Field("Age", "Age", FieldType.LONG)
+    )
+    val demoEntity = Entity("User", "User", demoFields)
+    return RepositoryModel(listOf(demoEntity))
 }

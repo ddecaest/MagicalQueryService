@@ -2,18 +2,20 @@ package com.ddecaest.external
 
 class RepositoryModel(private val entities: List<Entity>) {
 
-    private fun getEntity(entityName: String) = entities.find { it.name == entityName }
-
-    fun fieldAsTableName(entityName: String, fieldName: String): String? {
-        return getEntity(entityName)?.fields?.get(fieldName)
+    fun getField(entityName: String, fieldName: String): Field? {
+        return getEntity(entityName)?.fields?.find { it -> it.name == fieldName }
     }
 
-    fun entityAsTableName(entityName: String): String? {
-        return getEntity(entityName)?.tableName
+    fun getEntity(entityName: String): Entity? {
+        return entities.find { it.name == entityName }
     }
 }
 
-class Entity(val name: String, val tableName: TableName, val fields: Map<String, ColumnName>)
+data class Entity(val name: String, val tableName: String, val fields: Collection<Field>)
 
-typealias TableName = String
-typealias ColumnName = String
+data class Field(val name: String, val columnName: String, val type: FieldType)
+
+enum class FieldType {
+    STRING,
+    LONG
+}
