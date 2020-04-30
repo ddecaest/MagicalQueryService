@@ -1,34 +1,68 @@
 package com.ddecaest.internal
 
+import com.ddecaest.internal.QueryParser.ParsedQuery.FieldSelected
+
 object QueryParser {
 
-    fun parse(rawQuery: String): Query {
-        val removeWhiteLines = rawQuery.replace(" ", "")
-        if(!removeWhiteLines.startsWith("SELECT")) {
-            throw IllegalArgumentException("Malformed query : must start with SELECT")
+    fun parse(rawQuery: String): ParsedQuery {
+        val clauses = splitInSelectAndWhereClause(rawQuery)
+        val selectClause = clauses.selectClause
+        val whereClause = clauses.whereClause
+
+        val entitiesSelected = parseSelectClause(selectClause)
+        // TODO : parse where selected
+
+        return ParsedQuery(entitiesSelected)
+    }
+
+    private class SplitQuery(val selectClause: String, val whereClause: String)
+
+    private fun splitInSelectAndWhereClause(rawQuery: String): SplitQuery {
+
+        if (!rawQuery.startsWith("SELECT ")) {
+            throw IllegalArgumentException("Malformed query : must start with 'SELECT '")
+        }
+        val splitOnWhere = rawQuery.split("WHERE ")
+        if (splitOnWhere.size > 2) {
+            throw IllegalArgumentException("Malformed query : contained 'WHERE ' more than once")
+        }
+        val selectClause = splitOnWhere[0].substring(7)
+        val whereClause = if (splitOnWhere.size == 2) {
+            splitOnWhere[1]
+        } else {
+            ""
         }
 
-        val selectedFieldsParsed = mutableListOf<SelectedField>()
+        return SplitQuery(selectClause, whereClause)
+    }
 
-        val queryWithoutSelect = removeWhiteLines.substring(6)
-        val selectedFields = queryWithoutSelect.split(",")
-        for(selectedField in selectedFields) {
-            if(selectedField.isEmpty()) {
+    private fun parseSelectClause(selectClause: String): List<FieldSelected> {
+        val fieldSelectorsParsed = mutableListOf<FieldSelected>()
+
+        val fieldSelectors = selectClause.replace(" ", "").split(",")
+        for (fieldSelector in fieldSelectors) {
+            if (fieldSelector.isEmpty()) {
                 continue
             }
-            val amountOfDotsInSelectedField = selectedField.count { c: Char -> c == '.' }
-            if(amountOfDotsInSelectedField != 1) {
-                throw IllegalArgumentException("Malformed field selector $selectedField : contains more than one '.'.")
+            val splitOnDot = fieldSelector.split(".")
+            if (splitOnDot.size == 1) {
+                throw IllegalArgumentException("Malformed query : field selector $fieldSelector must be formed like [ENTITY.]+FIELD)")
             }
-            val splitOnDot = selectedField.split(".")
 
-            selectedFieldsParsed.add(SelectedField(splitOnDot[0], splitOnDot[1]))
+            val entities = splitOnDot.subList(0, splitOnDot.size - 1)
+            val field = splitOnDot[splitOnDot.size - 1]
+
+            fieldSelectorsParsed.add(FieldSelected(entities, field))
         }
+        return fieldSelectorsParsed
+    }
 
-        return Query(selectedFieldsParsed)
+
+    class ParsedQuery(val fieldsSelected: List<FieldSelected>) {
+
+        class FieldSelected(
+            val entityChain: List<String>,
+            val fieldName: String
+        )
     }
 }
-
-class Query(val fields: List<SelectedField>)
-
-class SelectedField(val entityName: String, val fieldName: String)
