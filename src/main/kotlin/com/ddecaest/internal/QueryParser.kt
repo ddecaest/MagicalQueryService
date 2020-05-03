@@ -4,18 +4,19 @@ import com.ddecaest.internal.QueryParser.ParsedQuery.FieldSelected
 
 object QueryParser {
 
+    /**
+     * Parses the raw query into a list of selectors.
+     * Does not actually check whether the query is executable, only that the syntax is valid.
+     */
     fun parse(rawQuery: String): ParsedQuery {
         val clauses = splitInSelectAndWhereClause(rawQuery)
-        val selectClause = clauses.selectClause
         val whereClause = clauses.whereClause
 
-        val entitiesSelected = parseSelectClause(selectClause)
+        val entitiesSelected = SelectClauseParser.parse(clauses.selectClause)
         // TODO : parse where selected
 
         return ParsedQuery(entitiesSelected)
     }
-
-    private class SplitQuery(val selectClause: String, val whereClause: String)
 
     private fun splitInSelectAndWhereClause(rawQuery: String): SplitQuery {
 
@@ -36,33 +37,55 @@ object QueryParser {
         return SplitQuery(selectClause, whereClause)
     }
 
-    private fun parseSelectClause(selectClause: String): List<FieldSelected> {
-        val fieldSelectorsParsed = mutableListOf<FieldSelected>()
 
-        val fieldSelectors = selectClause.replace(" ", "").split(",")
-        for (fieldSelector in fieldSelectors) {
-            if (fieldSelector.isEmpty()) {
-                continue
-            }
-            val splitOnDot = fieldSelector.split(".")
-            if (splitOnDot.size == 1) {
-                throw IllegalArgumentException("Malformed query : field selector $fieldSelector must be formed like [ENTITY.]+FIELD)")
-            }
-
-            val entities = splitOnDot.subList(0, splitOnDot.size - 1)
-            val field = splitOnDot[splitOnDot.size - 1]
-
-            fieldSelectorsParsed.add(FieldSelected(entities, field))
-        }
-        return fieldSelectorsParsed
-    }
-
+    private class SplitQuery(val selectClause: String, val whereClause: String)
 
     class ParsedQuery(val fieldsSelected: List<FieldSelected>) {
 
         class FieldSelected(
             val entityChain: List<String>,
-            val fieldName: String
+            val fieldName: String,
+            val alias: String?
         )
+    }
+}
+
+private object SelectClauseParser {
+
+    fun parse(selectClause: String): List<FieldSelected> {
+        return selectClause.split(",").mapNotNull { parseFieldSelected(it) }.toList()
+    }
+
+    private fun parseFieldSelected(fieldSelector: String): FieldSelected? {
+        val trimmedSelector = fieldSelector.trim()
+        if (trimmedSelector.isEmpty()) {
+            return null
+        }
+
+        val splitOnOptionalAlias = trimmedSelector.split(" AS ")
+        if (splitOnOptionalAlias.size > 2) {
+            throw IllegalArgumentException("Malformed query : field selector $fieldSelector contained ' AS ' more than once!")
+        }
+
+        val rawFieldSelectorChain = splitOnOptionalAlias[0].replace(" ", "")
+        val rawAlias = if (splitOnOptionalAlias.size > 1) {
+            splitOnOptionalAlias[1].replace(" ", "")
+        } else {
+            null
+        }
+
+        val (entities, field) = parseFieldSelectorChain(rawFieldSelectorChain)
+        return FieldSelected(entities, field, rawAlias)
+    }
+
+    private fun parseFieldSelectorChain(rawFieldSelectorChain: String): Pair<List<String>, String> {
+        val fieldSelectorChain = rawFieldSelectorChain.split(".")
+        if (fieldSelectorChain.size == 1) {
+            throw IllegalArgumentException("Malformed query : field selector $rawFieldSelectorChain must be formed like [ENTITY.]+FIELD)")
+        }
+
+        val entities = fieldSelectorChain.subList(0, fieldSelectorChain.size - 1)
+        val field = fieldSelectorChain[fieldSelectorChain.size - 1]
+        return Pair(entities, field)
     }
 }

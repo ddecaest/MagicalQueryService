@@ -3,10 +3,13 @@ package com.ddecaest.internal
 import com.ddecaest.external.FieldType
 import com.ddecaest.external.RepositoryModel
 import org.springframework.jdbc.core.RowMapper
+import java.lang.IllegalArgumentException
 
 internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
 
     fun build(query: QueryParser.ParsedQuery): JdbcQuery {
+        errorThrowingValidateNames(query)
+
         val queryModel = buildQueryModel(query)
 
         val sql = buildSql(queryModel)
@@ -14,6 +17,22 @@ internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
         val rowMapper = buildRowMapper(queryModel)
 
         return JdbcQuery(sql, params, rowMapper)
+    }
+
+    private fun errorThrowingValidateNames(query: QueryParser.ParsedQuery) {
+        // TODO: this could be done in the parsed query, in fact the parsed query should have the repository model linking done to it so the repository model isn't needed here?
+        val namesUsed = mutableSetOf<String>()
+        query.fieldsSelected.forEach {
+            if (it.alias != null) {
+                if (!namesUsed.add(it.alias)) {
+                    throw IllegalArgumentException("${it.alias} is contained twice in the result! Please use an alias so each field has a unique name!")
+                }
+            } else {
+                if (!namesUsed.add(it.fieldName)) {
+                    throw IllegalArgumentException("${it.fieldName} is contained twice in the result! Please use an alias so each field has a unique name!")
+                }
+            }
+        }
     }
 
     private fun buildQueryModel(query: QueryParser.ParsedQuery): QueryModel {

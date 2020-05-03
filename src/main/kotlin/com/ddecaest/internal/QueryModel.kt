@@ -32,15 +32,20 @@ internal class QueryModel(private val repositoryModel: RepositoryModel) {
         if (entityTree == null) {
             entityTree = createNode(fieldSelected.entityChain[0])
         }
-        visitNode(fieldSelected.fieldName, fieldSelected.entityChain, entityTree!!)
+        visitNode(fieldSelected.fieldName, fieldSelected.entityChain, entityTree!!, fieldSelected.alias)
     }
 
-    private fun visitNode(fieldName: String, entityChain: List<String>, currentNode: EntityNode) {
+    private fun visitNode(
+        fieldName: String,
+        entityChain: List<String>,
+        currentNode: EntityNode,
+        fieldAlias: String?
+    ) {
         val entityChainWithoutCurrentNode = entityChain.subList(1, entityChain.size)
 
         if (entityChainWithoutCurrentNode.isEmpty()) {
             // We have reached the entity in question
-            selection.add(createColumn(fieldName, currentNode))
+            selection.add(createColumn(fieldName, currentNode, fieldAlias))
             return
         }
 
@@ -48,7 +53,7 @@ internal class QueryModel(private val repositoryModel: RepositoryModel) {
 
         val alreadyCreatedJoin = currentNode.entitiesJoined.find { it.joined.entityName == nextEntityInChain }
         if (alreadyCreatedJoin != null) {
-            visitNode(fieldName, entityChainWithoutCurrentNode, alreadyCreatedJoin.joined)
+            visitNode(fieldName, entityChainWithoutCurrentNode, alreadyCreatedJoin.joined, fieldAlias)
         } else {
             val childEntity = createNode(nextEntityInChain)
             val modelJoin = getJoin(currentNode.entityName, nextEntityInChain)
@@ -56,14 +61,22 @@ internal class QueryModel(private val repositoryModel: RepositoryModel) {
 
             currentNode.entitiesJoined.add(queryModelJoin)
 
-            visitNode(fieldName, entityChainWithoutCurrentNode, childEntity)
+            visitNode(fieldName, entityChainWithoutCurrentNode, childEntity, fieldAlias)
         }
     }
 
-    private fun createColumn(fieldName: String, currentNode: EntityNode): ColumnSelected {
+    private fun createColumn(
+        fieldName: String,
+        currentNode: EntityNode,
+        fieldAlias: String?
+    ): ColumnSelected {
         val field = getField(fieldName, currentNode.entityName)
-        val fieldAlias = uniqueAliasGenerator.generateAlias(fieldName)
-        return ColumnSelected(field.columnName, fieldAlias, currentNode.aliasName, field.type)
+        val columnAlias = if(fieldAlias != null) {
+            fieldAlias
+        } else {
+            fieldName
+        }
+        return ColumnSelected(field.columnName, columnAlias, currentNode.aliasName, field.type)
     }
 
     private fun createNode(entityName: String): EntityNode {

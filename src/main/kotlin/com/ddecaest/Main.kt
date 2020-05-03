@@ -11,12 +11,12 @@ fun main() {
     val dataSource = instantiateDemoDb()
     val demoRepositoryModel = instantiateDemoRepositoryModel()
 
-    // TODO support select alias, user has to specify the alias because i generate it right now so the end-user doesnt know the end resulting alias...
+    // TODO: SELECT, WHERE, AS should not be case sensitive? Hell, Entity/field names should not be case sensitive?
     // TODO support WHERE clause
     // => PROFIT
 
     val factory = DefaultBootstrappedQueryServiceFactory.build(demoRepositoryModel, dataSource)
-    val rawQuery = "SELECT Person.Username, Person.Career.Name"
+    val rawQuery = "SELECT Person.Username, Person.Career.Name, Person.Id AS PersonId, Person.Career.Id AS CareerId"
     val result = factory.executeQuery(rawQuery)
     println("$rawQuery -> $result")
 }
