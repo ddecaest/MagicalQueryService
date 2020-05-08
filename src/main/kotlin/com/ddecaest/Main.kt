@@ -11,12 +11,12 @@ fun main() {
     val dataSource = instantiateDemoDb()
     val demoRepositoryModel = instantiateDemoRepositoryModel()
 
-    // TODO: SELECT, WHERE, AS should not be case sensitive? Hell, Entity/field names should not be case sensitive?
+    // TODO: Entity/field names could not be case sensitive?
     // TODO support WHERE clause
     // => PROFIT
 
     val factory = DefaultBootstrappedQueryServiceFactory.build(demoRepositoryModel, dataSource)
-    val rawQuery = "SELECT Person.Username, Person.Career.Name, Person.Id AS PersonId, Person.Career.Id AS CareerId"
+    val rawQuery = "SElECT Person.Username, Person.Career.Name, Person.Id aS PersonId, Person.Career.Id AS CareerId"
     val result = factory.executeQuery(rawQuery)
     println("$rawQuery -> $result")
 }

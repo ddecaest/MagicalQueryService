@@ -4,12 +4,21 @@ import com.ddecaest.internal.QueryParser.ParsedQuery.FieldSelected
 
 object QueryParser {
 
+    private const val selectKeyword = "SELECT "
+    private const val whereKeyword = " WHERE "
+    private const val asKeyword = " AS "
+
+    private val caseInsensitiveSelect = Regex("(?i)$selectKeyword")
+    private val caseInsensitiveWhere = Regex("(?i)$whereKeyword")
+    private val caseInsensitiveAs = Regex("(?i)$asKeyword")
     /**
      * Parses the raw query into a list of selectors.
      * Does not actually check whether the query is executable, only that the syntax is valid.
      */
     fun parse(rawQuery: String): ParsedQuery {
-        val clauses = splitInSelectAndWhereClause(rawQuery)
+        val preprocessedQuery = ensureKeyWordsAreUpperCase(rawQuery)
+
+        val clauses = splitInSelectAndWhereClause(preprocessedQuery)
         val whereClause = clauses.whereClause
 
         val entitiesSelected = SelectClauseParser.parse(clauses.selectClause)
@@ -18,23 +27,31 @@ object QueryParser {
         return ParsedQuery(entitiesSelected)
     }
 
-    private fun splitInSelectAndWhereClause(rawQuery: String): SplitQuery {
+    private fun ensureKeyWordsAreUpperCase(rawQuery: String): String {
+        return rawQuery.replace(caseInsensitiveSelect, selectKeyword)
+            .replace(caseInsensitiveWhere, whereKeyword)
+            .replace(caseInsensitiveAs, asKeyword)
+    }
 
-        if (!rawQuery.startsWith("SELECT ")) {
-            throw IllegalArgumentException("Malformed query : must start with 'SELECT '")
+    private fun splitInSelectAndWhereClause(rawQuery: String): SplitQuery {
+        if (!rawQuery.startsWith(selectKeyword)) {
+            throw IllegalArgumentException("Malformed query : must start with '$selectKeyword'")
         }
-        val splitOnWhere = rawQuery.split("WHERE ")
+        val withoutSelect = rawQuery.substring(selectKeyword.lastIndex)
+
+        val splitOnWhere = withoutSelect.split(whereKeyword)
         if (splitOnWhere.size > 2) {
-            throw IllegalArgumentException("Malformed query : contained 'WHERE ' more than once")
+            throw IllegalArgumentException("Malformed query : contained '$whereKeyword' more than once")
         }
-        val selectClause = splitOnWhere[0].substring(7)
-        val whereClause = if (splitOnWhere.size == 2) {
+
+        val selectClauseWithoutKeyWord = splitOnWhere[0]
+        val whereClauseWithoutKeyWord = if (splitOnWhere.size == 2) {
             splitOnWhere[1]
         } else {
             ""
         }
 
-        return SplitQuery(selectClause, whereClause)
+        return SplitQuery(selectClauseWithoutKeyWord, whereClauseWithoutKeyWord)
     }
 
 
