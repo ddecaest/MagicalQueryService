@@ -5,8 +5,10 @@ import com.ddecaest.external.*
 internal class QueryModel(private val repositoryModel: RepositoryModel) {
 
     class ColumnSelected(
+        val fieldName: String,
         val columnName: String,
         val columnAlias: String,
+        val entityName: String,
         val entityAlias: String,
         val type: FieldType
     )
@@ -71,12 +73,8 @@ internal class QueryModel(private val repositoryModel: RepositoryModel) {
         fieldAlias: String?
     ): ColumnSelected {
         val field = getField(fieldName, currentNode.entityName)
-        val columnAlias = if(fieldAlias != null) {
-            fieldAlias
-        } else {
-            fieldName
-        }
-        return ColumnSelected(field.columnName, columnAlias, currentNode.aliasName, field.type)
+        val columnAlias = fieldAlias ?: fieldName
+        return ColumnSelected(fieldName, field.columnName, columnAlias, currentNode.entityName, currentNode.aliasName, field.type)
     }
 
     private fun createNode(entityName: String): EntityNode {

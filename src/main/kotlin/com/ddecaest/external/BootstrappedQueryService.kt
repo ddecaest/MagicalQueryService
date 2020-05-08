@@ -10,7 +10,11 @@ interface BootstrappedQueryService {
 
 object DefaultBootstrappedQueryServiceFactory {
 
-    fun build(repositoryModel: RepositoryModel, dataSource: DataSource): BootstrappedQueryService {
-        return DefaultBootstrappedQueryService(repositoryModel, dataSource)
+    fun build(
+        repositoryModel: RepositoryModel,
+        dataSource: DataSource,
+        fieldInterceptors: List<FieldInterceptor<Any>> = listOf()
+    ): BootstrappedQueryService {
+        return DefaultBootstrappedQueryService(repositoryModel, dataSource, fieldInterceptors)
     }
 }

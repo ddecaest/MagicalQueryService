@@ -1,38 +1,20 @@
 package com.ddecaest.internal
 
+import com.ddecaest.external.FieldInterceptor
 import com.ddecaest.external.FieldType
 import com.ddecaest.external.RepositoryModel
 import org.springframework.jdbc.core.RowMapper
-import java.lang.IllegalArgumentException
 
 internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
 
-    fun build(query: QueryParser.ParsedQuery): JdbcQuery {
-        errorThrowingValidateNames(query)
-
+    fun build(query: QueryParser.ParsedQuery, fieldInterceptors: List<FieldInterceptor<Any>>): JdbcQuery {
         val queryModel = buildQueryModel(query)
 
         val sql = buildSql(queryModel)
         val params = mapOf<String, Any>() // TODO when where clause is implemented
-        val rowMapper = buildRowMapper(queryModel)
+        val rowMapper = buildRowMapper(queryModel, fieldInterceptors)
 
         return JdbcQuery(sql, params, rowMapper)
-    }
-
-    private fun errorThrowingValidateNames(query: QueryParser.ParsedQuery) {
-        // TODO: this could be done in the parsed query, in fact the parsed query should have the repository model linking done to it so the repository model isn't needed here?
-        val namesUsed = mutableSetOf<String>()
-        query.fieldsSelected.forEach {
-            if (it.alias != null) {
-                if (!namesUsed.add(it.alias)) {
-                    throw IllegalArgumentException("${it.alias} is contained twice in the result! Please use an alias so each field has a unique name!")
-                }
-            } else {
-                if (!namesUsed.add(it.fieldName)) {
-                    throw IllegalArgumentException("${it.fieldName} is contained twice in the result! Please use an alias so each field has a unique name!")
-                }
-            }
-        }
     }
 
     private fun buildQueryModel(query: QueryParser.ParsedQuery): QueryModel {
@@ -55,14 +37,14 @@ internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
         val rootNode = queryModel.entityTree!!
 
         val baseFromAsString = "FROM ${rootNode.tableName} AS ${rootNode.aliasName}"
-        val joinsAsString = buildJoins(rootNode).joinToString(separator =  " ")
+        val joinsAsString = buildJoins(rootNode).joinToString(separator = " ")
         return "$baseFromAsString $joinsAsString"
     }
 
     private fun buildJoins(rootNode: QueryModel.EntityNode): List<String> {
         val joins = mutableListOf<String>()
 
-        rootNode.entitiesJoined.forEach{
+        rootNode.entitiesJoined.forEach {
             val joinedEntity = it.joined
             joins.add("JOIN ${joinedEntity.tableName} AS ${joinedEntity.aliasName} ON ${rootNode.aliasName}.${it.originColumn} = ${joinedEntity.aliasName}.${it.joinedColumn}")
             joins.addAll(buildJoins(it.joined))
@@ -71,7 +53,9 @@ internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
         return joins
     }
 
-    private fun buildRowMapper(queryModel: QueryModel): RowMapper<Any> {
+    private fun buildRowMapper(
+        queryModel: QueryModel, fieldInterceptors: List<FieldInterceptor<Any>>
+    ): RowMapper<Any> {
         return RowMapper { resultSet, _ ->
             val result = mutableMapOf<String, Any>()
 
@@ -81,7 +65,13 @@ internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
                     FieldType.STRING -> resultSet.getString(field.columnAlias)
                     FieldType.LONG -> resultSet.getLong(field.columnAlias)
                 }
-                result[field.columnAlias] = variableResult
+
+                val fieldInterceptor = fieldInterceptors.find { it.entityName == field.entityName && it.fieldName == field.fieldName }
+                if(fieldInterceptor != null) {
+                    result[field.columnAlias] = fieldInterceptor.transformField(variableResult)
+                } else {
+                    result[field.columnAlias] = variableResult
+                }
             }
             result
         }

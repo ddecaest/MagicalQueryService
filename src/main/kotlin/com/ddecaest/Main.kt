@@ -10,12 +10,13 @@ import javax.sql.DataSource
 fun main() {
     val dataSource = instantiateDemoDb()
     val demoRepositoryModel = instantiateDemoRepositoryModel()
+    val demoInterceptor = FieldInterceptor<Any>("Person", "Username", { actualResult: Any -> "YOU ARE NOT ALLOWED TO SEE THIS" })
 
     // TODO: Entity/field names could not be case sensitive?
     // TODO support WHERE clause
     // => PROFIT
 
-    val factory = DefaultBootstrappedQueryServiceFactory.build(demoRepositoryModel, dataSource)
+    val factory = DefaultBootstrappedQueryServiceFactory.build(demoRepositoryModel, dataSource, listOf(demoInterceptor))
     val rawQuery = "SElECT Person.Username, Person.Career.Name, Person.Id aS PersonId, Person.Career.Id AS CareerId"
     val result = factory.executeQuery(rawQuery)
     println("$rawQuery -> $result")

@@ -24,7 +24,9 @@ object QueryParser {
         val entitiesSelected = SelectClauseParser.parse(clauses.selectClause)
         // TODO : parse where selected
 
-        return ParsedQuery(entitiesSelected)
+        val parsedQuery = ParsedQuery(entitiesSelected)
+        errorThrowingValidateSelectionNoDuplicates(parsedQuery)
+        return parsedQuery
     }
 
     private fun ensureKeyWordsAreUpperCase(rawQuery: String): String {
@@ -52,6 +54,16 @@ object QueryParser {
         }
 
         return SplitQuery(selectClauseWithoutKeyWord, whereClauseWithoutKeyWord)
+    }
+
+    private fun errorThrowingValidateSelectionNoDuplicates(query: ParsedQuery) {
+        val namesUsed = mutableSetOf<String>()
+        query.fieldsSelected.forEach {
+            val nameUsedForField = it.alias ?: it.fieldName
+            if (!namesUsed.add(nameUsedForField)) {
+                throw IllegalArgumentException("$nameUsedForField is contained twice in the result! Please use an alias so each field has a unique name!")
+            }
+        }
     }
 
 
