@@ -6,14 +6,29 @@ class RepositoryModel(private val entities: List<Entity>, private val joins: Lis
         return getEntity(entityName)?.fields?.find { it -> it.name == fieldName }
     }
 
-    fun getEntity(entityName: String): Entity? {
+    private fun getEntity(entityName: String): Entity? {
         return entities.find { it.name == entityName }
     }
 
-    fun getJoinColumns(entityA: String, entityB: String): Join? {
+    private fun getJoin(entityA: String, entityB: String): Join? {
         return joins.find {
             (it.entityA == entityA && it.entityB == entityB) || (it.entityA == entityB && it.entityB == entityA)
         }
+    }
+
+    fun errorThrowingGetEntity(entityName: String): Entity {
+        return getEntity(entityName)
+            ?: throw IllegalArgumentException("There is no table mapped to the unknown entity $entityName")
+    }
+
+    fun errorThrowingGetField(fieldName: String, entityName: String): Field {
+        return (getField(entityName, fieldName)
+            ?: throw IllegalArgumentException("There is no field $fieldName mapped to the entity $entityName"))
+    }
+
+    fun errorThrowingGetJoin(entityNameA: String, entityNameB: String): Join {
+        return (getJoin(entityNameA, entityNameB)
+            ?: throw IllegalArgumentException("There is no mapped join between $entityNameA and entity $entityNameB"))
     }
 }
 

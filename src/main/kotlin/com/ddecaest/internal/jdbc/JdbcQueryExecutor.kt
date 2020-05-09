@@ -1,4 +1,4 @@
-package com.ddecaest.internal
+package com.ddecaest.internal.jdbc
 
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import javax.sql.DataSource

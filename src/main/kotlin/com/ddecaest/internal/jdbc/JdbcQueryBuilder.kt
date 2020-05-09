@@ -1,32 +1,24 @@
-package com.ddecaest.internal
+package com.ddecaest.internal.jdbc
 
 import com.ddecaest.external.FieldInterceptor
 import com.ddecaest.external.FieldType
-import com.ddecaest.external.RepositoryModel
+import com.ddecaest.internal.parsing.QueryModel
 import org.springframework.jdbc.core.RowMapper
 
-internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
+internal class JdbcQueryBuilder(private val fieldInterceptors: List<FieldInterceptor<Any>>) {
 
-    fun build(query: QueryParser.ParsedQuery, fieldInterceptors: List<FieldInterceptor<Any>>): JdbcQuery {
-        val queryModel = buildQueryModel(query)
-
+    fun build(queryModel: QueryModel): JdbcQuery {
         val sql = buildSql(queryModel)
         val params = mapOf<String, Any>() // TODO when where clause is implemented
         val rowMapper = buildRowMapper(queryModel, fieldInterceptors)
-
         return JdbcQuery(sql, params, rowMapper)
-    }
-
-    private fun buildQueryModel(query: QueryParser.ParsedQuery): QueryModel {
-        val queryModel = QueryModel(repositoryModel)
-        query.fieldsSelected.forEach(queryModel::addToQueryModel)
-        return queryModel
     }
 
     private fun buildSql(queryModel: QueryModel): String {
         val selectClause = buildSelectClause(queryModel)
         val fromClause = buildFromClause(queryModel)
-        return "$selectClause $fromClause"
+        val whereClause = buildWhereClause(queryModel.whereCondition)
+        return "$selectClause $fromClause $whereClause"
     }
 
     private fun buildSelectClause(queryModel: QueryModel): String {
@@ -53,6 +45,13 @@ internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
         return joins
     }
 
+    private fun buildWhereClause(whereCondition: String): Any {
+        return when {
+            whereCondition.isEmpty() -> ""
+            else -> "WHERE $whereCondition"
+        }
+    }
+
     private fun buildRowMapper(
         queryModel: QueryModel, fieldInterceptors: List<FieldInterceptor<Any>>
     ): RowMapper<Any> {
@@ -66,8 +65,9 @@ internal class JdbcQueryBuilder(private val repositoryModel: RepositoryModel) {
                     FieldType.LONG -> resultSet.getLong(field.columnAlias)
                 }
 
-                val fieldInterceptor = fieldInterceptors.find { it.entityName == field.entityName && it.fieldName == field.fieldName }
-                if(fieldInterceptor != null) {
+                val fieldInterceptor =
+                    fieldInterceptors.find { it.entityName == field.entityName && it.fieldName == field.fieldName }
+                if (fieldInterceptor != null) {
                     result[field.columnAlias] = fieldInterceptor.transformField(variableResult)
                 } else {
                     result[field.columnAlias] = variableResult
