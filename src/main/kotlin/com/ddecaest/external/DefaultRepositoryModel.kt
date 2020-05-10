@@ -1,18 +1,19 @@
 package com.ddecaest.external
 
-class RepositoryModel(private val entities: List<Entity>, private val joins: List<Join>) {
+class DefaultRepositoryModel(val entities: List<Entity>, val joins: List<Join>) {
 
     fun getField(entityName: String, fieldName: String): Field? {
-        return getEntity(entityName)?.fields?.find { it -> it.name == fieldName }
+        return getEntity(entityName)?.fields?.find { it -> it.name.toUpperCase() == fieldName.toUpperCase() }
     }
 
     private fun getEntity(entityName: String): Entity? {
-        return entities.find { it.name == entityName }
+        return entities.find { it.name.toUpperCase() == entityName.toUpperCase() }
     }
 
     private fun getJoin(entityA: String, entityB: String): Join? {
         return joins.find {
-            (it.entityA == entityA && it.entityB == entityB) || (it.entityA == entityB && it.entityB == entityA)
+            (it.entityA.toUpperCase() == entityA.toUpperCase() && it.entityB.toUpperCase() == entityB.toUpperCase()) ||
+                    (it.entityA.toUpperCase() == entityB.toUpperCase() && it.entityB.toUpperCase() == entityA.toUpperCase())
         }
     }
 

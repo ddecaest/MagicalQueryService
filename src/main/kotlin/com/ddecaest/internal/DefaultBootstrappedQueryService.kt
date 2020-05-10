@@ -2,7 +2,7 @@ package com.ddecaest.internal
 
 import com.ddecaest.external.BootstrappedQueryService
 import com.ddecaest.external.FieldInterceptor
-import com.ddecaest.external.RepositoryModel
+import com.ddecaest.external.DefaultRepositoryModel
 import com.ddecaest.internal.jdbc.JdbcQueryBuilder
 import com.ddecaest.internal.jdbc.JdbcQueryExecutor
 import com.ddecaest.internal.parsing.QueryParser
@@ -10,7 +10,7 @@ import java.lang.IllegalArgumentException
 import javax.sql.DataSource
 
 internal class DefaultBootstrappedQueryService(
-    repositoryModel: RepositoryModel,
+    repositoryModel: DefaultRepositoryModel,
     dataSource: DataSource,
     private val fieldInterceptors: List<FieldInterceptor<Any>>
 ) : BootstrappedQueryService {
@@ -20,10 +20,11 @@ internal class DefaultBootstrappedQueryService(
     private val queryParser = QueryParser(repositoryModel)
 
     init {
+        RepositoryModelValidator.errorThrowingValidate(repositoryModel)
         validateFieldInterceptors(repositoryModel)
     }
 
-    private fun validateFieldInterceptors(repositoryModel: RepositoryModel) {
+    private fun validateFieldInterceptors(repositoryModel: DefaultRepositoryModel) {
         fieldInterceptors.forEach {
             if (repositoryModel.getField(it.entityName, it.fieldName) == null) {
                 throw IllegalArgumentException("A field interceptor has been defined for field ${it.fieldName} for entity ${it.entityName}, but no such field exists for that entity!")
