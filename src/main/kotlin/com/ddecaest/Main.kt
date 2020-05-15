@@ -15,7 +15,7 @@ fun main() {
     // TODO: actually parse where clause to be safe from delete from/insert intos
     // TODO: Repository model builder that hides internals of repository model?
 
-    val factory = DefaultBootstrappedQueryServiceFactory.build(demoRepositoryModel, dataSource, listOf(demoInterceptor))
+    val factory = MagicalQueryServiceFactory.build(demoRepositoryModel, dataSource, listOf(demoInterceptor))
     val rawQuery = "SElECT PERSON.username, Person.CAReer.Name, Person.Id aS PersonId, Person.Career.Id AS CareerId WHERE Person.HOBBY.name LIKE '%Recreational%'"
     val result = factory.executeQuery(rawQuery)
     println("$rawQuery -> $result")
@@ -58,7 +58,7 @@ private fun instantiateDemoDb(): DataSource {
     return dataSource
 }
 
-private fun instantiateDemoRepositoryModel(): DefaultRepositoryModel {
+private fun instantiateDemoRepositoryModel(): RepositoryModel {
     val userFields = listOf(
         Field("Id", "Id", FieldType.LONG),
         Field("Username", "UserName", FieldType.STRING),
@@ -84,5 +84,8 @@ private fun instantiateDemoRepositoryModel(): DefaultRepositoryModel {
     val joinBetweenUserAndJob = Join("Person", "Career", "Id", "UserId")
     val joinBetweenUserAndHobby = Join("Person", "Hobby", "Id", "UserId")
 
-    return DefaultRepositoryModel(listOf(userEntity, jobEntity, hobbyEntity), listOf(joinBetweenUserAndJob, joinBetweenUserAndHobby))
+    return RepositoryModelFactory.build(
+        listOf(userEntity, jobEntity, hobbyEntity),
+        listOf(joinBetweenUserAndJob, joinBetweenUserAndHobby)
+    )
 }

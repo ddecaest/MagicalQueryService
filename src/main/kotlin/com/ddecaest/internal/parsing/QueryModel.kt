@@ -1,9 +1,10 @@
 package com.ddecaest.internal.parsing
 
-import com.ddecaest.external.*
+import com.ddecaest.external.FieldType
+import com.ddecaest.external.RepositoryModel
 import com.ddecaest.internal.parsing.SelectClauseParser.FieldSelected
 
-internal class QueryModel private constructor(private val repositoryModel: DefaultRepositoryModel) {
+internal class QueryModel private constructor(private val repositoryModel: RepositoryModel) {
 
     class ColumnSelected(
         val fieldName: String,
@@ -30,7 +31,7 @@ internal class QueryModel private constructor(private val repositoryModel: Defau
     companion object {
 
         fun build(
-            repositoryModel: DefaultRepositoryModel,
+            repositoryModel: RepositoryModel,
             fieldSelection: List<FieldSelected>,
             whereClauseParsed: WhereClauseParser.WhereClauseParsed
         ): QueryModel {

@@ -1,21 +1,20 @@
-package com.ddecaest.internal
+package com.ddecaest.internal.repositorymodel
 
 import com.ddecaest.external.Join
-import com.ddecaest.external.DefaultRepositoryModel
-import java.lang.IllegalStateException
+import com.ddecaest.external.RepositoryModel
 
 internal object RepositoryModelValidator {
 
-    fun errorThrowingValidate(repositoryModel: DefaultRepositoryModel) {
+    fun errorThrowingValidate(repositoryModel: RepositoryModel) {
         errorThrowingValidateEntityNames(repositoryModel)
         errorThrowingValidateFieldNames(repositoryModel)
         errorThrowingValidateJoins(repositoryModel)
     }
 
-    private fun errorThrowingValidateFieldNames(repositoryModel: DefaultRepositoryModel) {
-        repositoryModel.entities.forEach { entity ->
+    private fun errorThrowingValidateFieldNames(repositoryModel: RepositoryModel) {
+        repositoryModel.getEntities().forEach { entity ->
             val existingFieldNamesUpperCase = mutableSetOf<String>()
-            entity.fields.forEach {field ->
+            entity.fields.forEach { field ->
                 val added = existingFieldNamesUpperCase.add(field.name.toUpperCase())
                 if (!added) {
                     throw duplicateFieldNameException(entity.name, field.name)
@@ -24,9 +23,9 @@ internal object RepositoryModelValidator {
         }
     }
 
-    private fun errorThrowingValidateEntityNames(repositoryModel: DefaultRepositoryModel) {
+    private fun errorThrowingValidateEntityNames(repositoryModel: RepositoryModel) {
         val existingSetNamesUpperCase = mutableSetOf<String>()
-        repositoryModel.entities.forEach {
+        repositoryModel.getEntities().forEach {
             val added = existingSetNamesUpperCase.add(it.name.toUpperCase())
             if (!added) {
                 throw duplicateEntityNameException(it.name)
@@ -34,15 +33,15 @@ internal object RepositoryModelValidator {
         }
     }
 
-    private fun errorThrowingValidateJoins(repositoryModel: DefaultRepositoryModel) {
+    private fun errorThrowingValidateJoins(repositoryModel: RepositoryModel) {
         val existingJoins = mutableSetOf<JoinEntities>()
-        repositoryModel.joins.forEach {
+        repositoryModel.getJoins().forEach {
             val added = existingJoins.add(JoinEntities(it.entityA, it.entityB))
             if (!added) {
                 throw duplicateJoinException(it)
             }
         }
-        repositoryModel.joins.forEach {
+        repositoryModel.getJoins().forEach {
             val added = existingJoins.add(JoinEntities(it.entityB, it.entityA))
             if (!added) {
                 throw duplicateJoinException(it)

@@ -1,8 +1,8 @@
 package com.ddecaest.internal.parsing
 
-import com.ddecaest.external.DefaultRepositoryModel
+import com.ddecaest.external.RepositoryModel
 
-internal class QueryParser(private val repositoryModel: DefaultRepositoryModel) {
+internal class QueryParser(private val repositoryModel: RepositoryModel) {
 
     companion object {
         internal const val selectKeyword = "SELECT "
